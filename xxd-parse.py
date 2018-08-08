@@ -26,7 +26,6 @@ def ParseHexdump(xxd_str):
 
   return raw_bytes
 
-
 class TestParseHexdump(unittest.TestCase):
 
   def test_single_line(self):
@@ -38,6 +37,11 @@ class TestParseHexdump(unittest.TestCase):
     test_data = '00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -'
     test_values = ParseHexdump(test_data)
     self.assertEquals(test_values, b'\x50\x72\x65\x2d\x4f\x72\x64\x65\x72\x0a\x0a\x53\x57\x5a\x30\x31\x20\x2d\x20\x58\x2d\x57\x69\x6e\x67\x20\x53\x65\x63\x6f\x6e\x64\x20\x45\x64\x69\x74\x69\x6f\x6e\x0a\x53\x57\x5a\x30\x36\x20\x2d')
+
+  def test_no_offset(self):
+    test_data = '5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01'
+    test_values = ParseHexdump(test_data)
+    self.assertEquals(test_values, b'\x50\x72\x65\x2d\x4f\x72\x64\x65\x72\x0a\x0a\x53\x57\x5a\x30\x31')
 
 if __name__ == '__main__':
   if len(sys.argv) > 1:
