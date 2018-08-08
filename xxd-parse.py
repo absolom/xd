@@ -6,6 +6,7 @@ import struct
 import unittest
 import sys
 
+
 def ParseHexdump(xxd_str):
   raw_bytes = b''
 
@@ -14,17 +15,20 @@ def ParseHexdump(xxd_str):
     mo_offset = re.search(r'^(\d+): ', xxd_str)
     if mo_offset:
       line = line[mo_offset.end(0):]
-    mo_data = re.search(r'^' + (r'([a-f0-9][a-f0-9][a-f0-9][a-f0-9]) *' * 8), line)
 
-    if not mo_data:
-      continue
-    
-    for i in range(1,8+1):
-      word_str = mo_data.group(i)
-      raw_bytes += struct.pack('B', int(word_str[0:2],16))
-      raw_bytes += struct.pack('B', int(word_str[2:4],16))
+    line = line.strip()
+    while True:
+      mo_data = re.search(r'^ ?([a-f0-9][a-f0-9][a-f0-9][a-f0-9])', line)
+      if mo_data:
+        word_str = mo_data.group(1)
+        raw_bytes += struct.pack('B', int(word_str[0:2],16))
+        raw_bytes += struct.pack('B', int(word_str[2:4],16))
+        line = line[mo_data.end(0):]
+      else:
+        break
 
   return raw_bytes
+
 
 class TestParseHexdump(unittest.TestCase):
 
@@ -42,6 +46,17 @@ class TestParseHexdump(unittest.TestCase):
     test_data = '5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01'
     test_values = ParseHexdump(test_data)
     self.assertEquals(test_values, b'\x50\x72\x65\x2d\x4f\x72\x64\x65\x72\x0a\x0a\x53\x57\x5a\x30\x31')
+
+  def test_sub_line(self):
+    test_data = '5072 652d 4f72 6465 720a'
+    test_values = ParseHexdump(test_data)
+    self.assertEquals(test_values, b'\x50\x72\x65\x2d\x4f\x72\x64\x65\x72\x0a')
+
+  def test_ignore_ascii(self):
+    test_data = '5072 652d 4f72 6465 720a  5072'
+    test_values = ParseHexdump(test_data)
+    self.assertEquals(test_values, b'\x50\x72\x65\x2d\x4f\x72\x64\x65\x72\x0a')
+
 
 if __name__ == '__main__':
   if len(sys.argv) > 1:
