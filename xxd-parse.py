@@ -8,6 +8,23 @@ import sys
 import argparse
 import math
 import ctypes
+import os
+
+def LoadStructDefs():
+  struct_files = ['.structs', '~/.xd/structs']
+  struct_files = [x for x in struct_files if os.path.isfile(x)]
+  structs = {}
+  if struct_files:
+    with open(struct_files[0], 'r') as f:
+      struct_data = f.read()
+    for line in struct_data.split('\n'):
+      if not line:
+        continue
+      entries = line.split(';')
+      if len(entries) != 5:
+        continue
+      structs[entries[0]] = {'bitfield' : entries[1], 'endian' : entries[2], 'word' : int(entries[3]), 'fields' : entries[4]}
+  return structs
 
 def RenderFields(field_tuples):
   ret = ''
@@ -279,6 +296,9 @@ class TestCommandLine(unittest.TestCase):
   
   def test_one_line(self):
     pass
+ 
+  def test_saved_struct(self):
+    pass
 
 
 
@@ -301,28 +321,32 @@ if __name__ == '__main__':
 
   ####
 
-  # TODO : Add config file which supports shortcuts for common struct defs and fieldnames
+  structs = LoadStructDefs()
 
   if args.xxd_output == '-':
     args.xxd_output = sys.stdin.read()
 
   byte_data = ParseHexdump(args.xxd_output)
+  if args.bitfield in structs:
+    saved = structs[args.bitfield]
+    args.bitfield = saved['bitfield']
+    args.endianness = saved['endian']
+    args.word_size_bits = saved['word']
+    args.field_names = saved['fields']
   s = Structure(args.bitfield)
   field_values = s.apply(byte_data, word_size=args.word_size_bits, endianness=args.endianness)
 
   if not args.one_line:
-
     field_tuples = []
     for i,field in enumerate(args.field_names.split(' ')):
       field_tuples.append((field, field_values[i]))
 
     out = RenderFields(field_tuples)
-    if args.repeat_input:
-      sys.stdout.write(args.xxd_output + out)
-    else:
-      sys.stdout.write(out)
-
   else:
+    out = str(field_values) + '\n'
 
-    print(str(field_values))
+  if args.repeat_input:
+    sys.stdout.write(args.xxd_output + out)
+  else:
+    sys.stdout.write(out)
 
