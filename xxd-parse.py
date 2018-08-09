@@ -261,12 +261,17 @@ class TestCommandLine(unittest.TestCase):
 
   def test_sanity_arg(self):
     import subprocess
-    output = subprocess.check_output('python xxd-parse.py "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" "8:8:8:8|32|32" "field0 field1 field2 field3 field4 field5"', shell=True)
+    output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
     self.assertEquals(output, self.truth)
 
   def test_sanity_stdin(self):
     import subprocess
-    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py - "8:8:8:8|32|32" "field0 field1 field2 field3 field4 field5"', shell=True)
+    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32" - --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    self.assertEquals(output, self.truth)
+
+  def test_sanity_stdin_implicit(self):
+    import subprocess
+    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32" --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
     self.assertEquals(output, self.truth)
 
 
@@ -279,14 +284,17 @@ if __name__ == '__main__':
       unittest.main()
   
   parser = argparse.ArgumentParser(description='Converts xxd output to parsed structs/bitfields.')
-  parser.add_argument('xxd_output', help='xxd output to parse')
   parser.add_argument('bitfield', help='bit widths of each field')
-  parser.add_argument('field_names', help='name of each field')
+  parser.add_argument('xxd_output', nargs='?', default='-', help='xxd output to parse')
+  parser.add_argument('--field_names', default='', help='name of each field')
   parser.add_argument('--endianness', default='little', help='endianness of the data, big or little*')
   parser.add_argument('--word_size_bits', type=int, default=4, help='Word size in bits, default is 32')
   args = parser.parse_args()
 
   ####
+
+  # TODO : Make '-' the default
+  # TODO : Add config file which supports shortcuts for common struct defs and fieldnames
 
   if args.xxd_output == '-':
     args.xxd_output = sys.stdin.read()
