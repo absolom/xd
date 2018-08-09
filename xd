@@ -310,6 +310,10 @@ class TestCommandLine(unittest.TestCase):
     output = subprocess.check_output('python xd "test_struct" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -"', shell=True)
     self.assertEquals(output, self.truth)
 
+  def tearDown(self):
+    import subprocess
+    subprocess.call('rm .structs &> /dev/null', shell=True)
+
 
 
 if __name__ == '__main__':
