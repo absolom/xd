@@ -238,11 +238,20 @@ if __name__ == '__main__':
   parser.add_argument('--word_size_bits', type=int, default=4, help='Word size in bits, default is 32')
   args = parser.parse_args()
 
+  # TODO : Add option to take xxd input from stdin instead of through an argument
+
   ####
 
   byte_data = ParseHexdump(args.xxd_output)
   s = Structure(args.bitfield)
   field_values = s.apply(byte_data, word_size=args.word_size_bits, endianness=args.endianness)
 
-  print(str(field_values))
+  field_tuples = []
+  for i,field in enumerate(args.field_names.split(' ')):
+    field_tuples.append((field, field_values[i]))
+
+
+  print('')
+  for name, value in field_tuples:
+    print('{:s}  :  0x{:x} ({:d})'.format(name, value, value))
 
