@@ -276,6 +276,8 @@ class TestCommandLine(unittest.TestCase):
 
     self.truth = RenderFields(field_tuples)
 
+    self.truth_oneline = str([x[1] for x in field_tuples]) + '\n'
+
   def test_sanity_arg(self):
     import subprocess
     output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -"  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
@@ -292,13 +294,20 @@ class TestCommandLine(unittest.TestCase):
     self.assertEquals(output, self.truth)
 
   def test_repeat_input(self):
-    pass
+    import subprocess
+    output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" --repeat_input  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    self.assertEquals(output, "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" + self.truth)
   
   def test_one_line(self):
-    pass
+    import subprocess
+    output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" --one_line  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    self.assertEquals(output, self.truth_oneline)
  
   def test_saved_struct(self):
-    pass
+    import subprocess
+    subprocess.check_call('echo "test_struct;8:8:8:8|32|32;little;4;field0 field1 field2 field3 field4 field5" > .structs', shell=True)
+    output = subprocess.check_output('python xxd-parse.py "test_struct" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -"', shell=True)
+    self.assertEquals(output, self.truth)
 
 
 
