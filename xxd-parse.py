@@ -10,7 +10,7 @@ import math
 import ctypes
 
 def RenderFields(field_tuples):
-  ret = '\n'
+  ret = ''
   for name, value in field_tuples:
     ret += '{:s}  :  0x{:x} ({:d})\n'.format(name, value, value)
 
@@ -261,18 +261,24 @@ class TestCommandLine(unittest.TestCase):
 
   def test_sanity_arg(self):
     import subprocess
-    output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    output = subprocess.check_output('python xxd-parse.py "8:8:8:8|32|32" "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -"  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
     self.assertEquals(output, self.truth)
 
   def test_sanity_stdin(self):
     import subprocess
-    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32" - --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32" -  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
     self.assertEquals(output, self.truth)
 
   def test_sanity_stdin_implicit(self):
     import subprocess
-    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32" --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
+    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py "8:8:8:8|32|32"  --field_names="field0 field1 field2 field3 field4 field5"', shell=True)
     self.assertEquals(output, self.truth)
+
+  def test_repeat_input(self):
+    pass
+  
+  def test_one_line(self):
+    pass
 
 
 
@@ -289,11 +295,12 @@ if __name__ == '__main__':
   parser.add_argument('--field_names', default='', help='name of each field')
   parser.add_argument('--endianness', default='little', help='endianness of the data, big or little*')
   parser.add_argument('--word_size_bits', type=int, default=4, help='Word size in bits, default is 32')
+  parser.add_argument('--one_line', action='store_true', help='print output in single line format')
+  parser.add_argument('--repeat_input', action='store_true', help='Repeat xxd input in output.')
   args = parser.parse_args()
 
   ####
 
-  # TODO : Make '-' the default
   # TODO : Add config file which supports shortcuts for common struct defs and fieldnames
 
   if args.xxd_output == '-':
@@ -303,10 +310,19 @@ if __name__ == '__main__':
   s = Structure(args.bitfield)
   field_values = s.apply(byte_data, word_size=args.word_size_bits, endianness=args.endianness)
 
-  field_tuples = []
-  for i,field in enumerate(args.field_names.split(' ')):
-    field_tuples.append((field, field_values[i]))
+  if not args.one_line:
 
-  out = RenderFields(field_tuples)
-  sys.stdout.write(out)
+    field_tuples = []
+    for i,field in enumerate(args.field_names.split(' ')):
+      field_tuples.append((field, field_values[i]))
+
+    out = RenderFields(field_tuples)
+    if args.repeat_input:
+      sys.stdout.write(args.xxd_output + out)
+    else:
+      sys.stdout.write(out)
+
+  else:
+
+    print(str(field_values))
 
