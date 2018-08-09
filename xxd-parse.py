@@ -9,6 +9,12 @@ import argparse
 import math
 import ctypes
 
+def RenderFields(field_tuples):
+  ret = '\n'
+  for name, value in field_tuples:
+    ret += '{:s}  :  0x{:x} ({:d})\n'.format(name, value, value)
+
+  return ret
 
 def ParseHexdump(xxd_str):
   raw_bytes = b''
@@ -239,7 +245,30 @@ class TestParseHexdump(unittest.TestCase):
     self.assertEquals(test_values, [0x50, 0x72, 0x65, 0x2d, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x0a])
 
 
-# TODO : Add command line tests
+
+class TestCommandLine(unittest.TestCase):
+
+  def setUp(self):
+    field_tuples = []
+    field_tuples.append(('field0', 0x50))
+    field_tuples.append(('field1', 0x72))
+    field_tuples.append(('field2', 0x65))
+    field_tuples.append(('field3', 0x2d))
+    field_tuples.append(('field4', 0x6564724f))
+    field_tuples.append(('field5', 0x530a0a72))
+
+    self.truth = RenderFields(field_tuples)
+
+  def test_sanity_arg(self):
+    import subprocess
+    output = subprocess.check_output('python xxd-parse.py "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" "8:8:8:8|32|32" "field0 field1 field2 field3 field4 field5"', shell=True)
+    self.assertEquals(output, self.truth)
+
+  def test_sanity_stdin(self):
+    import subprocess
+    output = subprocess.check_output('echo "00000000: 5072 652d 4f72 6465 720a 0a53 575a 3031  Pre-Order..SWZ01\n00000010: 202d 2058 2d57 696e 6720 5365 636f 6e64   - X-Wing Second\n00000020: 2045 6469 7469 6f6e 0a53 575a 3036 202d   Edition.SWZ06 -" | python xxd-parse.py - "8:8:8:8|32|32" "field0 field1 field2 field3 field4 field5"', shell=True)
+    self.assertEquals(output, self.truth)
+
 
 
 if __name__ == '__main__':
@@ -257,9 +286,10 @@ if __name__ == '__main__':
   parser.add_argument('--word_size_bits', type=int, default=4, help='Word size in bits, default is 32')
   args = parser.parse_args()
 
-  # TODO : Add option to take xxd input from stdin instead of through an argument
-
   ####
+
+  if args.xxd_output == '-':
+    args.xxd_output = sys.stdin.read()
 
   byte_data = ParseHexdump(args.xxd_output)
   s = Structure(args.bitfield)
@@ -269,8 +299,6 @@ if __name__ == '__main__':
   for i,field in enumerate(args.field_names.split(' ')):
     field_tuples.append((field, field_values[i]))
 
-
-  print('')
-  for name, value in field_tuples:
-    print('{:s}  :  0x{:x} ({:d})'.format(name, value, value))
+  out = RenderFields(field_tuples)
+  sys.stdout.write(out)
 
