@@ -37,36 +37,88 @@ def ParseHexdump(xxd_str):
   return byte_values
 
 
+class FieldBase:
+  def __init__(self, width):
+    self.values = []
+    self.width = width
+
+    if self.getTotalBits() % 8 != 0:
+      raise ValueError('Illegal field size.')
+
+  def getValues(self):
+    return self.values
+
+  def getWidth(self):
+    return self.width
+
+  def getTotalBytes(self):
+    return int(self.getTotalBits() / 8)
+    
+  def applyEndianness(self, endianness):
+    if endianness == 'little':
+      self.width.reverse()
+
+
+
+class Field(FieldBase):
+
+  def getTotalBits(self):
+    return self.width
+
+  def consumeBytes(self, field_bytes, endianness='little'):
+    field_bytes.reverse()
+    value = 0
+    for i,b in enumerate(field_bytes):
+      value += b << 8 * i
+      
+    self.values.append(value)
+
+
+
+class Bitfield(FieldBase):
+
+  def getTotalBits(self):
+    return sum(self.width)
+
+  def consumeBytes(self, field_bytes, endianness='little'):
+    self.values = []
+    self.applyEndianness(endianness)
+      
+    cur_byte = None
+    cur_byte_valid_bits = 0
+    bitfield_values = []
+    for width in self.getWidth():
+      value = 0
+
+      while width > 0:
+
+        if cur_byte_valid_bits == 0:
+          cur_byte_valid_bits = 8
+          cur_byte = field_bytes.pop(0)
+
+        if width < cur_byte_valid_bits:
+          bitshift = cur_byte_valid_bits - width
+          bitmask = int(math.pow(2, width)) - 1
+          consumed_bits = width
+        else:
+          bitshift = 0
+          bitmask = int(math.pow(2, cur_byte_valid_bits)) - 1
+          consumed_bits = cur_byte_valid_bits
+
+        width -= consumed_bits
+        value += (bitmask & (cur_byte >> bitshift)) << width
+        cur_byte_valid_bits -= consumed_bits
+
+      bitfield_values.append(value)
+
+    if endianness == 'little':
+      bitfield_values.reverse()
+    
+    self.values += bitfield_values
+
+
 
 class Structure:
-
-  class Field:
-    def __init__(self, is_bitfield, width):
-      self.is_bitfield = is_bitfield
-      self.width = width
-      if self.is_bitfield:
-        self.total_bits = sum(self.width)
-      else:
-        self.total_bits = self.width
-
-      if self.total_bits % 8 != 0:
-        raise ValueError('Illegal field size.')
-
-    def isBitfield(self):
-      return self.is_bitfield
-
-    def getWidth(self):
-      return self.width
-
-    def getTotalBits(self):
-      return self.total_bits
-
-    def getTotalBytes(self):
-      return int(self.total_bits / 8)
-      
-    def applyEndianness(self, endianness):
-      if endianness == 'little':
-        self.width.reverse()
 
   def __init__(self, def_str):
     tokens = def_str.split('|') 
@@ -106,58 +158,23 @@ class Structure:
   
       if endianness == 'little':
         field_bytes.reverse()
-  
-      if field.isBitfield():
-        field.applyEndianness(endianness)
-        
-        cur_byte = None
-        cur_byte_valid_bits = 0
-        bitfield_values = []
-        for width in field.getWidth():
-          value = 0
-  
-          while width > 0:
-  
-            if cur_byte_valid_bits == 0:
-              cur_byte_valid_bits = 8
-              cur_byte = field_bytes.pop(0)
-  
-            if width < cur_byte_valid_bits:
-              bitshift = cur_byte_valid_bits - width
-              bitmask = int(math.pow(2, width)) - 1
-              consumed_bits = width
-            else:
-              bitshift = 0
-              bitmask = int(math.pow(2, cur_byte_valid_bits)) - 1
-              consumed_bits = cur_byte_valid_bits
-  
-            width -= consumed_bits
-            value += (bitmask & (cur_byte >> bitshift)) << width
-            cur_byte_valid_bits -= consumed_bits
-  
-          bitfield_values.append(value)
-  
-        if endianness == 'little':
-          bitfield_values.reverse()
-        
-        values += bitfield_values
-  
-      else:
-        field_bytes.reverse()
-        value = 0
-        for i,b in enumerate(field_bytes):
-          value += b << 8 * i
-        
-        values.append(value)
 
+      field.consumeBytes(field_bytes, endianness=endianness)
+      values += field.getValues()
+  
     return values
 
   def __iter__(self):
     for i,_ in enumerate(self.fields):
-      yield Structure.Field(self.is_bitfield[i], self.fields[i])
+      if self.is_bitfield[i]:
+        yield Bitfield(self.fields[i])
+      else:
+        yield Field(self.fields[i])
+      #yield Structure.Field(self.is_bitfield[i], self.fields[i])
  
   def getTotalBits(self):
     return self.total_bits
+
 
 
 class TestStructure_Apply(unittest.TestCase):
@@ -221,6 +238,8 @@ class TestParseHexdump(unittest.TestCase):
     test_values = ParseHexdump(test_data)
     self.assertEquals(test_values, [0x50, 0x72, 0x65, 0x2d, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x0a])
 
+
+# TODO : Add command line tests
 
 
 if __name__ == '__main__':
