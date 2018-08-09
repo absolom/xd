@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """Inteded to be used with vim's selected text filter command to convert xxd output
 to parsed structures/bitfields."""
 
